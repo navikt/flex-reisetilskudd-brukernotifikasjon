@@ -5,10 +5,10 @@ import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.objectMapper
 import java.time.LocalDate
 
 data class Reisetilskudd(
-        val status: ReisetilskuddStatus,
-        val reisetilskuddId: String,
-        val fnr: String,
-        val kvitteringer: List<Kvittering> = emptyList(),
+    val status: ReisetilskuddStatus,
+    val reisetilskuddId: String,
+    val fnr: String,
+    val kvitteringer: List<Kvittering> = emptyList(),
 )
 
 enum class ReisetilskuddStatus {
