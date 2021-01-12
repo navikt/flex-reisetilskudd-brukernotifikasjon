@@ -1,0 +1,9 @@
+{
+  "app": "flex-reisetilskudd-brukernotifikasjon",
+  "namespace": "flex",
+  "team": "flex",
+  "kafkaPool": "nav-dev",
+  "env": {
+    "FLEX_REISETILSKUDD_FRONTEND_URL": "https://TODO"
+  }
+}
