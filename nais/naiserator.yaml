@@ -38,6 +38,8 @@ spec:
             diskAutoresize: true
   kafka:
     pool: {{kafkaPool}}
+  envFrom:
+    - secret: flex-reisetilskudd-brukernotifikasjon-serviceuser
   env:
   {{#each env}}
      - name: {{@key}}
