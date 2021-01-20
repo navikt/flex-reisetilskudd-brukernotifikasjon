@@ -3,7 +3,13 @@
   "namespace": "flex",
   "team": "flex",
   "kafkaPool": "nav-dev",
+  "externalHosts": [
+    "kafka-schema-registry.nais-q.adeo.no"
+  ],
   "env": {
-    "FLEX_REISETILSKUDD_FRONTEND_URL": "https://TODO"
+    "FLEX_REISETILSKUDD_FRONTEND_URL": "https://www-gcp.dev.nav.no/syk/reisetilskudd",
+    "ON_PREM_KAFKA_BOOTSTRAP_SERVERS_URL": "SSL://b27apvl00045.preprod.local:8443,SSL://b27apvl00046.preprod.local:8443,SSL://b27apvl00047.preprod.local:8443",
+    "ON_PREM_KAFKA_SCHEMA_REGISTRY_URL": "https://kafka-schema-registry.nais-q.adeo.no",
+    "ON_PREM_KAFKA_SECURITY_PROTOCOL": "SASL_SSL"
   }
 }

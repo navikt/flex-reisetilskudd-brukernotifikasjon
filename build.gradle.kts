@@ -25,10 +25,12 @@ apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
 repositories {
     mavenCentral()
+    maven(url = "https://packages.confluent.io/maven/")
     maven(url = "https://jitpack.io")
 }
 
 val brukernotifikasjonSchemasVersion = "1.2020.12.04-14.56-cc113a425843"
+val confluentVersion = "5.5.1"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
@@ -44,6 +46,7 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:4.10")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.github.navikt:brukernotifikasjon-schemas:$brukernotifikasjonSchemasVersion")
+    implementation("io.confluent:kafka-avro-serializer:$confluentVersion")
 
     runtimeOnly("org.postgresql:postgresql")
 
@@ -52,7 +55,6 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.awaitility:awaitility")
     testImplementation("org.hamcrest:hamcrest-library")
-    //    testImplementation("org.scala-lang:scala-library:2.12.11")
 }
 
 tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

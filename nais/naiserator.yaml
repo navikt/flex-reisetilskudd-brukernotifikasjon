@@ -36,6 +36,12 @@ spec:
         databases:
           - name: flex-reisetilskudd-brukernotifikasjon-db
             diskAutoresize: true
+  accessPolicy:
+    outbound:
+      external:
+      {{#each externalHosts as |url|}}
+         - host: {{url}}
+      {{/each}}
   kafka:
     pool: {{kafkaPool}}
   envFrom:
