@@ -43,7 +43,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api")
     implementation("org.hibernate.validator:hibernate-validator")
     implementation("org.springframework.boot:spring-boot-starter-logging")
-    implementation("net.logstash.logback:logstash-logback-encoder:4.10")
+    implementation("net.logstash.logback:logstash-logback-encoder:6.6")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.github.navikt:brukernotifikasjon-schemas:$brukernotifikasjonSchemasVersion")
     implementation("io.confluent:kafka-avro-serializer:$confluentVersion")
