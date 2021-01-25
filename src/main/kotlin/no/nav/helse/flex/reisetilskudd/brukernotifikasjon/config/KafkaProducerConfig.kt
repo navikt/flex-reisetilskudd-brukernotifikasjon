@@ -4,6 +4,7 @@ import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import no.nav.brukernotifikasjon.schemas.Beskjed
+import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
+import java.io.Serializable
 
 @Configuration
 class KafkaProducerConfig(
@@ -26,9 +28,7 @@ class KafkaProducerConfig(
     @Value("\${serviceuser.password}") val serviceuserPassword: String
 ) {
 
-    @Bean
-    @Profile("default")
-    fun producerFactory(): ProducerFactory<Nokkel, Beskjed> {
+    private fun commonStuff(): Pair<KafkaAvroSerializer, Map<String, Serializable>> {
         val client = CachedSchemaRegistryClient(kafkaSchemaRegistryUrl, 10)
         val kafkaAvroSerializer = KafkaAvroSerializer(client)
         val config = mapOf(
@@ -45,13 +45,36 @@ class KafkaProducerConfig(
             SaslConfigs.SASL_JAAS_CONFIG to "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${serviceuserUsername}\" password=\"${serviceuserPassword}\";",
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
+        return Pair(kafkaAvroSerializer, config)
+    }
 
+    @Bean
+    @Profile("default")
+    fun beskjedProducerFactory(): ProducerFactory<Nokkel, Beskjed> {
+        val (kafkaAvroSerializer, config) = commonStuff()
         @Suppress("UNCHECKED_CAST")
         return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>)
     }
 
     @Bean
+    @Profile("default")
+    fun doneProducerFactory(): ProducerFactory<Nokkel, Done> {
+        val (kafkaAvroSerializer, config) = commonStuff()
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Done>)
+    }
+
+    @Bean
     fun beskjedKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Beskjed>): KafkaTemplate<Nokkel, Beskjed> {
-        return KafkaTemplate(producerFactory)
+        val kafkaTemplate = KafkaTemplate(producerFactory)
+        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-nyBeskjed-v1"
+        return kafkaTemplate
+    }
+
+    @Bean
+    fun doneKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Done>): KafkaTemplate<Nokkel, Done> {
+        val kafkaTemplate = KafkaTemplate(producerFactory)
+        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-done-v1"
+        return kafkaTemplate
     }
 }

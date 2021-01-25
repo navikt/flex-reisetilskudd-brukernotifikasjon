@@ -59,7 +59,6 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:$testContainersVersion")
     testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
     testImplementation("org.awaitility:awaitility")
-    testImplementation("org.hamcrest:hamcrest-library")
 }
 
 tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

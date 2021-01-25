@@ -14,8 +14,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.awaitility.Awaitility.await
-import org.hamcrest.CoreMatchers
-import org.hamcrest.MatcherAssert
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -64,15 +62,17 @@ class BrukernotifikasjonIntegrationTest {
             tom = LocalDate.now(),
         )
         kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get()
+        kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get() // HÅndterer duplikater
 
         kafkaConsumer.subscribe(listOf("aapen-brukernotifikasjon-nyBeskjed-v1"))
+
         val records = ArrayList<ConsumerRecord<Nokkel, Beskjed>>()
         await().atMost(6, SECONDS).until {
             records.addAll(kafkaConsumer.poll(Duration.ofSeconds(1)))
             records.size == 1
         }
 
-        MatcherAssert.assertThat(records[0].value().getTekst(), CoreMatchers.`is`("Du har en søknad om reisetilskudd til utfylling"))
+        records[0].value().getTekst() shouldBeEqualTo "Du har en søknad om reisetilskudd til utfylling"
 
         val alleTilUtfylling = tilUtfyllingRepository.findAll().iterator().asSequence().toList()
         alleTilUtfylling.size shouldBeEqualTo 1

@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository
 @Repository
 interface TilUtfyllingRepository : CrudRepository<TilUtfylling, String> {
     fun findTilUtfyllingByReisetilskuddId(reisetilskuddId: String): TilUtfylling?
+    fun existsByReisetilskuddId(reisetilskuddId: String): Boolean
 }
