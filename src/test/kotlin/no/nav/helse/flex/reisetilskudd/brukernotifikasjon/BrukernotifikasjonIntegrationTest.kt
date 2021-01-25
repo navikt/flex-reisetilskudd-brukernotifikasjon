@@ -5,6 +5,10 @@ import no.nav.brukernotifikasjon.schemas.Nokkel
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.FLEX_APEN_REISETILSKUDD_TOPIC
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.Reisetilskudd
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.ReisetilskuddStatus
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilUtfyllingRepository
+import org.amshove.kluent.shouldBeEqualTo
+import org.amshove.kluent.shouldBeNull
+import org.amshove.kluent.shouldNotBeNull
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -17,7 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import sharedPostgreSQLContainer
 import java.time.Duration
+import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit.SECONDS
 import kotlin.collections.ArrayList
@@ -28,7 +36,13 @@ import kotlin.collections.ArrayList
     partitions = 1,
     topics = [FLEX_APEN_REISETILSKUDD_TOPIC]
 )
-class BrukernotifikasjonIntegrationTest() {
+@Testcontainers
+class BrukernotifikasjonIntegrationTest {
+
+    companion object {
+        @Container
+        val postgreSQLContainer = sharedPostgreSQLContainer
+    }
 
     @Autowired
     private lateinit var kafkaProducer: KafkaProducer<String, String>
@@ -36,13 +50,18 @@ class BrukernotifikasjonIntegrationTest() {
     @Autowired
     private lateinit var kafkaConsumer: Consumer<Nokkel, Beskjed>
 
+    @Autowired
+    private lateinit var tilUtfyllingRepository: TilUtfyllingRepository
+
     @Test
-    fun `SENDT søknad prosesseres og lagres i databasen`() {
+    fun `APEN søknad prosesseres og lagres i databasen`() {
         val soknad = Reisetilskudd(
-            status = ReisetilskuddStatus.SENDT,
+            status = ReisetilskuddStatus.ÅPEN,
             fnr = "12345600000",
             reisetilskuddId = UUID.randomUUID().toString(),
-            kvitteringer = emptyList()
+            sykmeldingId = UUID.randomUUID().toString(),
+            fom = LocalDate.now(),
+            tom = LocalDate.now(),
         )
         kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get()
 
@@ -54,6 +73,14 @@ class BrukernotifikasjonIntegrationTest() {
         }
 
         MatcherAssert.assertThat(records[0].value().getTekst(), CoreMatchers.`is`("Du har en søknad om reisetilskudd til utfylling"))
+
+        val alleTilUtfylling = tilUtfyllingRepository.findAll().iterator().asSequence().toList()
+        alleTilUtfylling.size shouldBeEqualTo 1
+
+        val tilUtfylling = tilUtfyllingRepository.findTilUtfyllingByReisetilskuddId(soknad.reisetilskuddId)!!
+        tilUtfylling.eksterntVarsel shouldBeEqualTo false
+        tilUtfylling.doneSendt.shouldBeNull()
+        tilUtfylling.beskjedSendt.shouldNotBeNull()
     }
 }
 

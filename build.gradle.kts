@@ -24,13 +24,16 @@ buildscript {
 apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
 repositories {
+    jcenter()
     mavenCentral()
     maven(url = "https://packages.confluent.io/maven/")
     maven(url = "https://jitpack.io")
 }
 
-val brukernotifikasjonSchemasVersion = "1.2020.12.04-14.56-cc113a425843"
+val brukernotifikasjonSchemasVersion = "1.2021.01.18-11.12-b9c8c40b98d1"
 val confluentVersion = "5.5.1"
+val testContainersVersion = "1.15.1"
+val kluentVersion = "1.65"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
@@ -38,11 +41,11 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.kafka:spring-kafka")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")
     implementation("org.slf4j:slf4j-api")
     implementation("org.hibernate.validator:hibernate-validator")
     implementation("org.springframework.boot:spring-boot-starter-logging")
+    implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
     implementation("net.logstash.logback:logstash-logback-encoder:6.6")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.github.navikt:brukernotifikasjon-schemas:$brukernotifikasjonSchemasVersion")
@@ -50,9 +53,11 @@ dependencies {
 
     runtimeOnly("org.postgresql:postgresql")
 
+    testImplementation("org.amshove.kluent:kluent:$kluentVersion")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
-    testImplementation("com.h2database:h2")
+    testImplementation("org.testcontainers:postgresql:$testContainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testContainersVersion")
     testImplementation("org.awaitility:awaitility")
     testImplementation("org.hamcrest:hamcrest-library")
 }
@@ -65,6 +70,7 @@ tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
         jvmTarget = "14"
+        kotlinOptions.allWarningsAsErrors = true
     }
 }
 tasks.withType<Test> {

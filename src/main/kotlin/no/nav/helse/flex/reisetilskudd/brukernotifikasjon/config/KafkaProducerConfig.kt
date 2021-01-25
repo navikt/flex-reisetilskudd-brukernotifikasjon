@@ -46,6 +46,7 @@ class KafkaProducerConfig(
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
 
+        @Suppress("UNCHECKED_CAST")
         return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>)
     }
 

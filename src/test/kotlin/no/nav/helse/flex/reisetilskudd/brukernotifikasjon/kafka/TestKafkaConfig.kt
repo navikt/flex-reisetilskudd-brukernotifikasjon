@@ -1,5 +1,6 @@
 package no.nav.helse.flex.reisetilskudd.brukernotifikasjon.kafka
 
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import io.confluent.kafka.serializers.*
 import no.nav.brukernotifikasjon.schemas.Beskjed
@@ -32,8 +33,8 @@ class TestKafkaConfig(
     @Bean
     fun mockSchemaRegistryClient(): MockSchemaRegistryClient {
         val client = MockSchemaRegistryClient()
-        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", Beskjed.`SCHEMA$`)
-        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", Nokkel.`SCHEMA$`)
+        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Beskjed.`SCHEMA$`))
+        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Nokkel.`SCHEMA$`))
         return client
     }
 
@@ -55,6 +56,7 @@ class TestKafkaConfig(
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
 
+        @Suppress("UNCHECKED_CAST")
         return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>)
     }
 
@@ -66,7 +68,7 @@ class TestKafkaConfig(
     @Bean
     fun kafkaAvroDeserializer(mockSchemaRegistryClient: MockSchemaRegistryClient): KafkaAvroDeserializer {
         val config = HashMap<String, Any>()
-        config[AbstractKafkaAvroSerDeConfig.AUTO_REGISTER_SCHEMAS] = false
+        config[AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS] = false
         config[KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG] = true
         config[KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = "http://ikke.i.bruk.nav"
         return KafkaAvroDeserializer(mockSchemaRegistryClient, config)
@@ -74,6 +76,7 @@ class TestKafkaConfig(
 
     @Bean
     fun consumerFactoryBeskjed(kafkaAvroDeserializer: KafkaAvroDeserializer, properties: KafkaProperties): ConsumerFactory<Nokkel, Beskjed> {
+        @Suppress("UNCHECKED_CAST")
         return DefaultKafkaConsumerFactory(
             properties.buildConsumerProperties(),
             kafkaAvroDeserializer as Deserializer<Nokkel>,

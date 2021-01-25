@@ -8,25 +8,13 @@ data class Reisetilskudd(
     val status: ReisetilskuddStatus,
     val reisetilskuddId: String,
     val fnr: String,
-    val kvitteringer: List<Kvittering> = emptyList(),
+    val sykmeldingId: String,
+    val fom: LocalDate,
+    val tom: LocalDate,
 )
 
 enum class ReisetilskuddStatus {
     FREMTIDIG, ÅPEN, SENDBAR, SENDT, AVBRUTT
 }
-
-enum class Transportmiddel {
-    KOLLEKTIVT, TAXI, EGEN_BIL
-}
-
-data class Kvittering(
-    val kvitteringId: String? = null,
-    val blobId: String,
-    val navn: String,
-    val datoForReise: LocalDate,
-    val storrelse: Long,
-    val belop: Int, // Beløp i øre . 100kr = 10000
-    val transportmiddel: Transportmiddel
-)
 
 fun String.tilReisetilskudd(): Reisetilskudd = objectMapper.readValue(this)
