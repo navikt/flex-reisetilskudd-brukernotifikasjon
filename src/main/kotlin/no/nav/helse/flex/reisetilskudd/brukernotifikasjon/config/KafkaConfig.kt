@@ -28,3 +28,6 @@ class KafkaConfig {
 }
 
 const val FLEX_APEN_REISETILSKUDD_TOPIC = "flex.aapen-reisetilskudd"
+const val BESKJED_TOPIC = "aapen-brukernotifikasjon-nyBeskjed-v1"
+const val OPPGAVE_TOPIC = "aapen-brukernotifikasjon-nyOppgave-v1"
+const val DONE_TOPIC = "aapen-brukernotifikasjon-done-v1"

@@ -8,12 +8,16 @@ import no.nav.brukernotifikasjon.schemas.builders.BeskjedBuilder
 import no.nav.brukernotifikasjon.schemas.builders.DoneBuilder
 import no.nav.brukernotifikasjon.schemas.builders.NokkelBuilder
 import no.nav.brukernotifikasjon.schemas.builders.OppgaveBuilder
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.BESKJED_TOPIC
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.DONE_TOPIC
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.OPPGAVE_TOPIC
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.*
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.log
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilInnsendingRepository
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilUtfyllingRepository
+import org.apache.kafka.clients.producer.Producer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Component
 import java.net.URL
 import java.time.Instant
@@ -23,9 +27,9 @@ import java.util.*
 
 @Component
 class ReisetilskuddBrukernotifikasjonService(
-    val beskjedKafkaTemplate: KafkaTemplate<Nokkel, Beskjed>,
-    val oppgaveKafkaTemplate: KafkaTemplate<Nokkel, Oppgave>,
-    val doneKafkaTemplate: KafkaTemplate<Nokkel, Done>,
+    val beskjedKafkaTemplate: Producer<Nokkel, Beskjed>,
+    val oppgaveKafkaTemplate: Producer<Nokkel, Oppgave>,
+    val doneKafkaTemplate: Producer<Nokkel, Done>,
     val tilUtfyllingRepository: TilUtfyllingRepository,
     val tilInnsendingRepository: TilInnsendingRepository,
     @Value("\${serviceuser.username}") val serviceuserUsername: String,
@@ -68,7 +72,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withTidspunkt(LocalDateTime.now())
             .build()
 
-        oppgaveKafkaTemplate.sendDefault(nokkel, oppgave).get()
+        oppgaveKafkaTemplate.send(ProducerRecord(OPPGAVE_TOPIC, nokkel, oppgave)).get()
 
         tilInnsendingRepository.save(
             TilInnsending(
@@ -106,7 +110,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withTidspunkt(LocalDateTime.now())
             .build()
 
-        beskjedKafkaTemplate.sendDefault(nokkel, beskjed).get()
+        beskjedKafkaTemplate.send(ProducerRecord(BESKJED_TOPIC, nokkel, beskjed)).get()
 
         tilUtfyllingRepository.save(
             TilUtfylling(
@@ -142,7 +146,7 @@ class ReisetilskuddBrukernotifikasjonService(
                     .withTidspunkt(LocalDateTime.now())
                     .build()
 
-                doneKafkaTemplate.sendDefault(nokkel, done)
+                doneKafkaTemplate.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilUtfyllingRepository.save(it.copy(doneSendt = Instant.now()))
             }
@@ -163,7 +167,7 @@ class ReisetilskuddBrukernotifikasjonService(
                     .withTidspunkt(LocalDateTime.now())
                     .build()
 
-                doneKafkaTemplate.sendDefault(nokkel, done)
+                doneKafkaTemplate.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilInnsendingRepository.save(it.copy(doneSendt = Instant.now()))
             }

@@ -10,6 +10,7 @@ import no.nav.brukernotifikasjon.schemas.Oppgave
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.serialization.Deserializer
@@ -22,11 +23,11 @@ import org.springframework.context.annotation.Profile
 import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import org.springframework.kafka.core.ProducerFactory
 import java.io.Serializable
 import java.util.*
 
 @Configuration
+@Profile("test")
 class TestKafkaConfig(
     @Value("\${on-prem-kafka.schema-registry.url}") val kafkaSchemaRegistryUrl: String,
     @Value("\${on-prem-kafka.bootstrap-servers}") val kafkaBootstrapServers: String,
@@ -55,33 +56,6 @@ class TestKafkaConfig(
             CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to kafkaSecurityProtocol,
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
-    }
-
-    @Bean
-    @Profile("test")
-    fun beskjedProducerFactory(mockSchemaRegistryClient: MockSchemaRegistryClient): ProducerFactory<Nokkel, Beskjed> {
-        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
-
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>)
-    }
-
-    @Bean
-    @Profile("test")
-    fun oppgaveProducerFactory(mockSchemaRegistryClient: MockSchemaRegistryClient): ProducerFactory<Nokkel, Oppgave> {
-        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
-
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Oppgave>)
-    }
-
-    @Bean
-    @Profile("test")
-    fun doneProducerFactory(mockSchemaRegistryClient: MockSchemaRegistryClient): ProducerFactory<Nokkel, Done> {
-        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
-
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Done>)
     }
 
     @Bean
@@ -121,5 +95,26 @@ class TestKafkaConfig(
     @Bean
     fun kafkaConsumer(consumerFactoryBeskjed: ConsumerFactory<Nokkel, Beskjed>): Consumer<Nokkel, Beskjed> {
         return consumerFactoryBeskjed.createConsumer()
+    }
+
+    @Bean
+    fun beskjedKafkaProducer(mockSchemaRegistryClient: MockSchemaRegistryClient): Producer<Nokkel, Beskjed> {
+        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>).createProducer()
+    }
+
+    @Bean
+    fun oppgaveKafkaProducer(mockSchemaRegistryClient: MockSchemaRegistryClient): Producer<Nokkel, Oppgave> {
+        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Oppgave>).createProducer()
+    }
+
+    @Bean
+    fun doneKafkaProducer(mockSchemaRegistryClient: MockSchemaRegistryClient): Producer<Nokkel, Done> {
+        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Done>).createProducer()
     }
 }

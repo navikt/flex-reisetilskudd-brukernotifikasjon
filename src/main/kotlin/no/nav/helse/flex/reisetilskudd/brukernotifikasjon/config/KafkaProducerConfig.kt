@@ -1,6 +1,5 @@
 package no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import no.nav.brukernotifikasjon.schemas.Beskjed
@@ -8,19 +7,16 @@ import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
 import no.nav.brukernotifikasjon.schemas.Oppgave
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
-import org.apache.kafka.common.serialization.Serializer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.core.ProducerFactory
-import java.io.Serializable
 
 @Configuration
+@Profile("default")
 class KafkaProducerConfig(
     @Value("\${on-prem-kafka.schema-registry.url}") val kafkaSchemaRegistryUrl: String,
     @Value("\${on-prem-kafka.bootstrap-servers}") val kafkaBootstrapServers: String,
@@ -29,67 +25,52 @@ class KafkaProducerConfig(
     @Value("\${serviceuser.password}") val serviceuserPassword: String
 ) {
 
-    private fun commonStuff(): Pair<KafkaAvroSerializer, Map<String, Serializable>> {
-        val client = CachedSchemaRegistryClient(kafkaSchemaRegistryUrl, 10)
-        val kafkaAvroSerializer = KafkaAvroSerializer(client)
-        val config = mapOf(
-            ProducerConfig.ACKS_CONFIG to "all",
-            ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to "true",
-            ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to "1",
-            ProducerConfig.MAX_BLOCK_MS_CONFIG to "15000",
-            ProducerConfig.RETRIES_CONFIG to "100000",
-            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to KafkaAvroSerializer::class.java,
-            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to KafkaAvroSerializer::class.java,
-            AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to kafkaSchemaRegistryUrl,
+    private fun commonConfig(): Map<String, String> {
+        return mapOf(
             CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
             CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to kafkaSecurityProtocol,
             SaslConfigs.SASL_JAAS_CONFIG to "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${serviceuserUsername}\" password=\"${serviceuserPassword}\";",
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
-        return Pair(kafkaAvroSerializer, config)
+    }
+
+    private fun commonProducerConfig(
+        keySerializer: Class<*>,
+        valueSerializer: Class<*>
+    ): Map<String, Any> {
+        return mapOf(
+            ProducerConfig.ACKS_CONFIG to "all",
+            ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to "true",
+            ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to "1",
+            ProducerConfig.MAX_BLOCK_MS_CONFIG to "15000",
+            ProducerConfig.RETRIES_CONFIG to "100000",
+            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to valueSerializer,
+            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to keySerializer
+        ) + commonConfig()
+    }
+
+    fun <K, V> skapBrukernotifikasjonKafkaProducer(): KafkaProducer<K, V> =
+        KafkaProducer(
+            commonProducerConfig(
+                keySerializer = KafkaAvroSerializer::class.java,
+                valueSerializer = KafkaAvroSerializer::class.java
+            ) + mapOf(
+                AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to kafkaSchemaRegistryUrl
+            )
+        )
+
+    @Bean
+    fun beskjedKafkaProducer(): KafkaProducer<Nokkel, Beskjed> {
+        return skapBrukernotifikasjonKafkaProducer()
     }
 
     @Bean
-    @Profile("default")
-    fun beskjedProducerFactory(): ProducerFactory<Nokkel, Beskjed> {
-        val (kafkaAvroSerializer, config) = commonStuff()
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Beskjed>)
+    fun oppgaveKafkaProducer(): KafkaProducer<Nokkel, Oppgave> {
+        return skapBrukernotifikasjonKafkaProducer()
     }
 
     @Bean
-    @Profile("default")
-    fun oppgaveProducerFactory(): ProducerFactory<Nokkel, Oppgave> {
-        val (kafkaAvroSerializer, config) = commonStuff()
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Oppgave>)
-    }
-    @Bean
-    @Profile("default")
-    fun doneProducerFactory(): ProducerFactory<Nokkel, Done> {
-        val (kafkaAvroSerializer, config) = commonStuff()
-        @Suppress("UNCHECKED_CAST")
-        return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Done>)
-    }
-
-    @Bean
-    fun beskjedKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Beskjed>): KafkaTemplate<Nokkel, Beskjed> {
-        val kafkaTemplate = KafkaTemplate(producerFactory)
-        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-nyBeskjed-v1"
-        return kafkaTemplate
-    }
-
-    @Bean
-    fun oppgaveKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Oppgave>): KafkaTemplate<Nokkel, Oppgave> {
-        val kafkaTemplate = KafkaTemplate(producerFactory)
-        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-nyOppgave-v1"
-        return kafkaTemplate
-    }
-
-    @Bean
-    fun doneKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Done>): KafkaTemplate<Nokkel, Done> {
-        val kafkaTemplate = KafkaTemplate(producerFactory)
-        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-done-v1"
-        return kafkaTemplate
+    fun doneKafkaProducer(): KafkaProducer<Nokkel, Done> {
+        return skapBrukernotifikasjonKafkaProducer()
     }
 }
