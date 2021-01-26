@@ -3,14 +3,14 @@ package no.nav.helse.flex.reisetilskudd.brukernotifikasjon.innsending
 import no.nav.brukernotifikasjon.schemas.Beskjed
 import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
+import no.nav.brukernotifikasjon.schemas.Oppgave
 import no.nav.brukernotifikasjon.schemas.builders.BeskjedBuilder
 import no.nav.brukernotifikasjon.schemas.builders.DoneBuilder
 import no.nav.brukernotifikasjon.schemas.builders.NokkelBuilder
-import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.Reisetilskudd
-import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.ReisetilskuddStatus
-import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.TilUtfylling
-import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.tilReisetilskudd
+import no.nav.brukernotifikasjon.schemas.builders.OppgaveBuilder
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.*
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.log
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilInnsendingRepository
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilUtfyllingRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.kafka.core.KafkaTemplate
@@ -24,10 +24,12 @@ import java.util.*
 @Component
 class ReisetilskuddBrukernotifikasjonService(
     val beskjedKafkaTemplate: KafkaTemplate<Nokkel, Beskjed>,
+    val oppgaveKafkaTemplate: KafkaTemplate<Nokkel, Oppgave>,
     val doneKafkaTemplate: KafkaTemplate<Nokkel, Done>,
     val tilUtfyllingRepository: TilUtfyllingRepository,
+    val tilInnsendingRepository: TilInnsendingRepository,
     @Value("\${serviceuser.username}") val serviceuserUsername: String,
-    @Value("\${flex.reisetilskudd.frontend.url}") val flexReisetilskuddFrontendUrl: String
+    @Value("\${dittsykefravaer.url}") val dittSykefravaerUrl: String
 ) {
 
     private val log = log()
@@ -38,14 +40,48 @@ class ReisetilskuddBrukernotifikasjonService(
         return when (reisetilskudd.status) {
             ReisetilskuddStatus.FREMTIDIG -> Unit
             ReisetilskuddStatus.ÅPEN -> handterApen(reisetilskudd)
-            ReisetilskuddStatus.SENDBAR -> TODO()
-            ReisetilskuddStatus.SENDT -> handterSendt(reisetilskudd)
-            ReisetilskuddStatus.AVBRUTT -> handterAvbrutt(reisetilskudd)
+            ReisetilskuddStatus.SENDBAR -> handterSendbar(reisetilskudd)
+            ReisetilskuddStatus.SENDT -> handterAvbruttOgSendt(reisetilskudd)
+            ReisetilskuddStatus.AVBRUTT -> handterAvbruttOgSendt(reisetilskudd)
         }
     }
 
-    private fun handterSendt(reisetilskudd: Reisetilskudd) {
-        reisetilskudd.toString()
+    private fun handterSendbar(reisetilskudd: Reisetilskudd) {
+        tilUtfyllingRepository.findTilUtfyllingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId).sendDone()
+
+        if (tilInnsendingRepository.existsByReisetilskuddId(reisetilskudd.reisetilskuddId)) {
+            log.info("Mottok duplikat reisetilskuddsøknad med id ${reisetilskudd.reisetilskuddId}")
+            return
+        }
+        val nokkel = NokkelBuilder()
+            .withEventId(UUID.randomUUID().toString())
+            .withSystembruker(serviceuserUsername)
+            .build()
+
+        val oppgave = OppgaveBuilder()
+            .withGrupperingsId(reisetilskudd.sykmeldingId)
+            .withFodselsnummer(reisetilskudd.fnr)
+            .withLink(URL(dittSykefravaerUrl))
+            .withSikkerhetsnivaa(4)
+            .withTekst("Du har en søknad om reisetilskudd til utfylling")
+            .withEksternVarsling(true)
+            .withTidspunkt(LocalDateTime.now())
+            .build()
+
+        oppgaveKafkaTemplate.sendDefault(nokkel, oppgave).get()
+
+        tilInnsendingRepository.save(
+            TilInnsending(
+                reisetilskuddId = reisetilskudd.reisetilskuddId,
+                grupperingsid = oppgave.getGrupperingsId(),
+                fnr = oppgave.getFodselsnummer(),
+                eksterntVarsel = oppgave.getEksternVarsling(),
+                nokkel = nokkel.getEventId(),
+                doneSendt = null,
+                oppgaveSendt = Instant.now(),
+            )
+        )
+        log.info("Opprettet oppgave på reisetilskuddsøknad ${reisetilskudd.reisetilskuddId} med status ${reisetilskudd.status}")
     }
 
     private fun handterApen(reisetilskudd: Reisetilskudd) {
@@ -62,7 +98,7 @@ class ReisetilskuddBrukernotifikasjonService(
         val beskjed = BeskjedBuilder()
             .withGrupperingsId(reisetilskudd.sykmeldingId)
             .withFodselsnummer(reisetilskudd.fnr)
-            .withLink(URL(flexReisetilskuddFrontendUrl)) // TODO hvilken side skal vi til?
+            .withLink(URL(dittSykefravaerUrl))
             .withSikkerhetsnivaa(4)
             .withSynligFremTil(synligFremTil)
             .withTekst("Du har en søknad om reisetilskudd til utfylling")
@@ -84,11 +120,16 @@ class ReisetilskuddBrukernotifikasjonService(
                 synligFremTil = synligFremTil.atOffset(ZoneOffset.UTC).toInstant(),
             )
         )
-        log.info("Mottok reisetilskuddsøknad ${reisetilskudd.reisetilskuddId} med status ${reisetilskudd.status}")
+        log.info("Opprettet beskjed på reisetilskuddsøknad ${reisetilskudd.reisetilskuddId} med status ${reisetilskudd.status}")
     }
 
-    private fun handterAvbrutt(reisetilskudd: Reisetilskudd) {
-        tilUtfyllingRepository.findTilUtfyllingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId)?.let {
+    private fun handterAvbruttOgSendt(reisetilskudd: Reisetilskudd) {
+        tilUtfyllingRepository.findTilUtfyllingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId).sendDone()
+        tilInnsendingRepository.findTilInnsendingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId).sendDone()
+    }
+
+    private fun TilUtfylling?.sendDone() {
+        this?.let {
             if (it.doneSendt == null) {
                 val nokkel = NokkelBuilder()
                     .withEventId(it.nokkel)
@@ -96,12 +137,35 @@ class ReisetilskuddBrukernotifikasjonService(
                     .build()
 
                 val done = DoneBuilder()
-                    .withGrupperingsId(reisetilskudd.sykmeldingId)
-                    .withFodselsnummer(reisetilskudd.fnr)
+                    .withGrupperingsId(it.grupperingsid)
+                    .withFodselsnummer(it.fnr)
                     .withTidspunkt(LocalDateTime.now())
                     .build()
 
                 doneKafkaTemplate.sendDefault(nokkel, done)
+
+                tilUtfyllingRepository.save(it.copy(doneSendt = Instant.now()))
+            }
+        }
+    }
+
+    private fun TilInnsending?.sendDone() {
+        this?.let {
+            if (it.doneSendt == null) {
+                val nokkel = NokkelBuilder()
+                    .withEventId(it.nokkel)
+                    .withSystembruker(serviceuserUsername)
+                    .build()
+
+                val done = DoneBuilder()
+                    .withGrupperingsId(it.grupperingsid)
+                    .withFodselsnummer(it.fnr)
+                    .withTidspunkt(LocalDateTime.now())
+                    .build()
+
+                doneKafkaTemplate.sendDefault(nokkel, done)
+
+                tilInnsendingRepository.save(it.copy(doneSendt = Instant.now()))
             }
         }
     }

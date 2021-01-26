@@ -6,6 +6,7 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer
 import no.nav.brukernotifikasjon.schemas.Beskjed
 import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
+import no.nav.brukernotifikasjon.schemas.Oppgave
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SaslConfigs
@@ -58,6 +59,13 @@ class KafkaProducerConfig(
 
     @Bean
     @Profile("default")
+    fun oppgaveProducerFactory(): ProducerFactory<Nokkel, Oppgave> {
+        val (kafkaAvroSerializer, config) = commonStuff()
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config, kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Oppgave>)
+    }
+    @Bean
+    @Profile("default")
     fun doneProducerFactory(): ProducerFactory<Nokkel, Done> {
         val (kafkaAvroSerializer, config) = commonStuff()
         @Suppress("UNCHECKED_CAST")
@@ -68,6 +76,13 @@ class KafkaProducerConfig(
     fun beskjedKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Beskjed>): KafkaTemplate<Nokkel, Beskjed> {
         val kafkaTemplate = KafkaTemplate(producerFactory)
         kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-nyBeskjed-v1"
+        return kafkaTemplate
+    }
+
+    @Bean
+    fun oppgaveKafkaTemplate(producerFactory: ProducerFactory<Nokkel, Oppgave>): KafkaTemplate<Nokkel, Oppgave> {
+        val kafkaTemplate = KafkaTemplate(producerFactory)
+        kafkaTemplate.defaultTopic = "aapen-brukernotifikasjon-nyOppgave-v1"
         return kafkaTemplate
     }
 

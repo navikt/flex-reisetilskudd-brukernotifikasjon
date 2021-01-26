@@ -28,4 +28,4 @@ serviceuser:
   username: srvyo
   password: halaien
 
-flex.reisetilskudd.frontend.url: http://www.nav.no/syk/reisetilskudd
+dittsykefravaer.url: https://tjenester.nav.no/sykefravaer

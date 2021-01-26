@@ -6,6 +6,7 @@ import io.confluent.kafka.serializers.*
 import no.nav.brukernotifikasjon.schemas.Beskjed
 import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
+import no.nav.brukernotifikasjon.schemas.Oppgave
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -67,6 +68,15 @@ class TestKafkaConfig(
 
     @Bean
     @Profile("test")
+    fun oppgaveProducerFactory(mockSchemaRegistryClient: MockSchemaRegistryClient): ProducerFactory<Nokkel, Oppgave> {
+        val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
+
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaProducerFactory(config(), kafkaAvroSerializer as Serializer<Nokkel>, kafkaAvroSerializer as Serializer<Oppgave>)
+    }
+
+    @Bean
+    @Profile("test")
     fun doneProducerFactory(mockSchemaRegistryClient: MockSchemaRegistryClient): ProducerFactory<Nokkel, Done> {
         val kafkaAvroSerializer = KafkaAvroSerializer(mockSchemaRegistryClient)
 
@@ -95,6 +105,16 @@ class TestKafkaConfig(
             properties.buildConsumerProperties(),
             kafkaAvroDeserializer as Deserializer<Nokkel>,
             kafkaAvroDeserializer as Deserializer<Beskjed>
+        )
+    }
+
+    @Bean
+    fun consumerFactoryOppgave(kafkaAvroDeserializer: KafkaAvroDeserializer, properties: KafkaProperties): ConsumerFactory<Nokkel, Oppgave> {
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaConsumerFactory(
+            properties.buildConsumerProperties(),
+            kafkaAvroDeserializer as Deserializer<Nokkel>,
+            kafkaAvroDeserializer as Deserializer<Oppgave>
         )
     }
 
