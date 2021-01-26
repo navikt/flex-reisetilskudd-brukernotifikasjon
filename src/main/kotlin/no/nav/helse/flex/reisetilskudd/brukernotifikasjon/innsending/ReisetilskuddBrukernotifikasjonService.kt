@@ -63,7 +63,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withFodselsnummer(reisetilskudd.fnr)
             .withLink(URL(dittSykefravaerUrl))
             .withSikkerhetsnivaa(4)
-            .withTekst("Du har en søknad om reisetilskudd til utfylling")
+            .withTekst("Nå kan du sende inn søknaden om reisetilskudd")
             .withEksternVarsling(true)
             .withTidspunkt(LocalDateTime.now())
             .build()
