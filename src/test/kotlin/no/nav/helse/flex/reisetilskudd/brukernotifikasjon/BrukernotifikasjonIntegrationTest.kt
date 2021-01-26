@@ -62,7 +62,7 @@ class BrukernotifikasjonIntegrationTest {
             tom = LocalDate.now(),
         )
         kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get()
-        kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get() // HÅndterer duplikater
+        kafkaProducer.send(ProducerRecord("flex.aapen-reisetilskudd", soknad.reisetilskuddId, soknad.serialisertTilString())).get() // Håndterer duplikater
 
         kafkaConsumer.subscribe(listOf("aapen-brukernotifikasjon-nyBeskjed-v1"))
 
