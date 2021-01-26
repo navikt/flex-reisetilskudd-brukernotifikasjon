@@ -27,9 +27,9 @@ import java.util.*
 
 @Component
 class ReisetilskuddBrukernotifikasjonService(
-    val beskjedKafkaTemplate: Producer<Nokkel, Beskjed>,
-    val oppgaveKafkaTemplate: Producer<Nokkel, Oppgave>,
-    val doneKafkaTemplate: Producer<Nokkel, Done>,
+    val beskjedKafkaProducer: Producer<Nokkel, Beskjed>,
+    val oppgaveKafkaProducer: Producer<Nokkel, Oppgave>,
+    val doneKafkaProducer: Producer<Nokkel, Done>,
     val tilUtfyllingRepository: TilUtfyllingRepository,
     val tilInnsendingRepository: TilInnsendingRepository,
     @Value("\${serviceuser.username}") val serviceuserUsername: String,
@@ -72,7 +72,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withTidspunkt(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
             .build()
 
-        oppgaveKafkaTemplate.send(ProducerRecord(OPPGAVE_TOPIC, nokkel, oppgave)).get()
+        oppgaveKafkaProducer.send(ProducerRecord(OPPGAVE_TOPIC, nokkel, oppgave)).get()
 
         tilInnsendingRepository.save(
             TilInnsending(
@@ -110,7 +110,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withTidspunkt(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
             .build()
 
-        beskjedKafkaTemplate.send(ProducerRecord(BESKJED_TOPIC, nokkel, beskjed)).get()
+        beskjedKafkaProducer.send(ProducerRecord(BESKJED_TOPIC, nokkel, beskjed)).get()
 
         tilUtfyllingRepository.save(
             TilUtfylling(
@@ -146,7 +146,7 @@ class ReisetilskuddBrukernotifikasjonService(
                     .withTidspunkt(LocalDateTime.now())
                     .build()
 
-                doneKafkaTemplate.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
+                doneKafkaProducer.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilUtfyllingRepository.save(it.copy(doneSendt = Instant.now()))
             }
@@ -167,7 +167,7 @@ class ReisetilskuddBrukernotifikasjonService(
                     .withTidspunkt(LocalDateTime.now())
                     .build()
 
-                doneKafkaTemplate.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
+                doneKafkaProducer.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilInnsendingRepository.save(it.copy(doneSendt = Instant.now()))
             }
