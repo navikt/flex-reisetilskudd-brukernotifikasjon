@@ -22,7 +22,6 @@ import org.springframework.stereotype.Component
 import java.net.URL
 import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.*
 
@@ -63,8 +62,6 @@ class ReisetilskuddBrukernotifikasjonService(
             .withSystembruker(serviceuserUsername)
             .build()
 
-        val nowOslo = LocalDateTime.ofInstant(Instant.now(), ZoneId.of("Europe/Oslo"))
-
         val oppgave = OppgaveBuilder()
             .withGrupperingsId(reisetilskudd.sykmeldingId)
             .withFodselsnummer(reisetilskudd.fnr)
@@ -72,7 +69,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withSikkerhetsnivaa(4)
             .withTekst("Nå kan du sende inn søknaden om reisetilskudd")
             .withEksternVarsling(true)
-            .withTidspunkt(nowOslo)
+            .withTidspunkt(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
             .build()
 
         oppgaveKafkaTemplate.send(ProducerRecord(OPPGAVE_TOPIC, nokkel, oppgave)).get()
@@ -101,8 +98,6 @@ class ReisetilskuddBrukernotifikasjonService(
             .withSystembruker(serviceuserUsername)
             .build()
 
-        val nowOslo = LocalDateTime.ofInstant(Instant.now(), ZoneId.of("Europe/Oslo"))
-
         val synligFremTil = reisetilskudd.tom.plusDays(1).atStartOfDay()
         val beskjed = BeskjedBuilder()
             .withGrupperingsId(reisetilskudd.sykmeldingId)
@@ -112,7 +107,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .withSynligFremTil(synligFremTil)
             .withTekst("Du har en søknad om reisetilskudd til utfylling")
             .withEksternVarsling(false)
-            .withTidspunkt(nowOslo)
+            .withTidspunkt(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
             .build()
 
         beskjedKafkaTemplate.send(ProducerRecord(BESKJED_TOPIC, nokkel, beskjed)).get()

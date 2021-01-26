@@ -2,7 +2,6 @@ package no.nav.helse.flex.reisetilskudd.brukernotifikasjon
 
 import no.nav.brukernotifikasjon.schemas.Beskjed
 import no.nav.brukernotifikasjon.schemas.Nokkel
-import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.FLEX_APEN_REISETILSKUDD_TOPIC
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.Reisetilskudd
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.domain.ReisetilskuddStatus
 import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.repository.TilUtfyllingRepository
@@ -17,10 +16,10 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import sharedKafkaContainer
 import sharedPostgreSQLContainer
 import java.time.Duration
 import java.time.LocalDate
@@ -30,16 +29,15 @@ import kotlin.collections.ArrayList
 
 @SpringBootTest
 @DirtiesContext
-@EmbeddedKafka(
-    partitions = 1,
-    topics = [FLEX_APEN_REISETILSKUDD_TOPIC]
-)
 @Testcontainers
 class BrukernotifikasjonIntegrationTest {
 
     companion object {
         @Container
         val postgreSQLContainer = sharedPostgreSQLContainer
+
+        @Container
+        val kafkaContainer = sharedKafkaContainer
     }
 
     @Autowired

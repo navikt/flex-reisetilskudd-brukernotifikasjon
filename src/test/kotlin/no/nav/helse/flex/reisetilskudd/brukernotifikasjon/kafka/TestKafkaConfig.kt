@@ -29,18 +29,8 @@ import java.util.*
 @Configuration
 @Profile("test")
 class TestKafkaConfig(
-    @Value("\${on-prem-kafka.schema-registry.url}") val kafkaSchemaRegistryUrl: String,
     @Value("\${on-prem-kafka.bootstrap-servers}") val kafkaBootstrapServers: String,
-    @Value("\${on-prem-kafka.security-protocol}") val kafkaSecurityProtocol: String
 ) {
-
-    @Bean
-    fun mockSchemaRegistryClient(): MockSchemaRegistryClient {
-        val client = MockSchemaRegistryClient()
-        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Beskjed.`SCHEMA$`))
-        client.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Nokkel.`SCHEMA$`))
-        return client
-    }
 
     private fun config(): Map<String, Serializable> {
         return mapOf(
@@ -51,9 +41,9 @@ class TestKafkaConfig(
             ProducerConfig.RETRIES_CONFIG to "100000",
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to KafkaAvroSerializer::class.java,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to KafkaAvroSerializer::class.java,
-            AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to kafkaSchemaRegistryUrl,
+            AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to "http://whatever.nav",
             CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
-            CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to kafkaSecurityProtocol,
+            CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to "plaintext",
             SaslConfigs.SASL_MECHANISM to "PLAIN"
         )
     }
@@ -64,31 +54,38 @@ class TestKafkaConfig(
     }
 
     @Bean
-    fun kafkaAvroDeserializer(mockSchemaRegistryClient: MockSchemaRegistryClient): KafkaAvroDeserializer {
+    fun mockSchemaRegistryClient(): MockSchemaRegistryClient {
+        val mockSchemaRegistryClient = MockSchemaRegistryClient()
+        mockSchemaRegistryClient.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Beskjed.`SCHEMA$`))
+        mockSchemaRegistryClient.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Nokkel.`SCHEMA$`))
+        return mockSchemaRegistryClient
+    }
+
+    fun kafkaAvroDeserializer(): KafkaAvroDeserializer {
         val config = HashMap<String, Any>()
         config[AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS] = false
         config[KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG] = true
         config[KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG] = "http://ikke.i.bruk.nav"
-        return KafkaAvroDeserializer(mockSchemaRegistryClient, config)
+        return KafkaAvroDeserializer(mockSchemaRegistryClient(), config)
     }
 
     @Bean
-    fun consumerFactoryBeskjed(kafkaAvroDeserializer: KafkaAvroDeserializer, properties: KafkaProperties): ConsumerFactory<Nokkel, Beskjed> {
+    fun consumerFactoryBeskjed(properties: KafkaProperties): ConsumerFactory<Nokkel, Beskjed> {
         @Suppress("UNCHECKED_CAST")
         return DefaultKafkaConsumerFactory(
             properties.buildConsumerProperties(),
-            kafkaAvroDeserializer as Deserializer<Nokkel>,
-            kafkaAvroDeserializer as Deserializer<Beskjed>
+            kafkaAvroDeserializer() as Deserializer<Nokkel>,
+            kafkaAvroDeserializer() as Deserializer<Beskjed>
         )
     }
 
     @Bean
-    fun consumerFactoryOppgave(kafkaAvroDeserializer: KafkaAvroDeserializer, properties: KafkaProperties): ConsumerFactory<Nokkel, Oppgave> {
+    fun consumerFactoryOppgave(properties: KafkaProperties): ConsumerFactory<Nokkel, Oppgave> {
         @Suppress("UNCHECKED_CAST")
         return DefaultKafkaConsumerFactory(
             properties.buildConsumerProperties(),
-            kafkaAvroDeserializer as Deserializer<Nokkel>,
-            kafkaAvroDeserializer as Deserializer<Oppgave>
+            kafkaAvroDeserializer() as Deserializer<Nokkel>,
+            kafkaAvroDeserializer() as Deserializer<Oppgave>
         )
     }
 
