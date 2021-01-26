@@ -1,5 +1,6 @@
 package no.nav.helse.flex.reisetilskudd.brukernotifikasjon.selvtest
 
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -9,11 +10,15 @@ const val APPLICATION_LIVENESS = "Application is alive!"
 const val APPLICATION_READY = "Application is ready!"
 
 @RestController
-class SelvtestController {
+class SelvtestController(private val applicationState: ApplicationState) {
 
     @GetMapping("/internal/isAlive", produces = [MediaType.TEXT_PLAIN_VALUE])
     fun isAlive(): ResponseEntity<String> {
-        return ResponseEntity.ok(APPLICATION_LIVENESS)
+        return if (applicationState.isAlive()) {
+            ResponseEntity.ok(APPLICATION_LIVENESS)
+        } else {
+            ResponseEntity("Noe er galt", HttpStatus.INTERNAL_SERVER_ERROR)
+        }
     }
 
     @GetMapping("/internal/isReady", produces = [MediaType.TEXT_PLAIN_VALUE])
