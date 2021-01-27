@@ -7,6 +7,9 @@ import no.nav.brukernotifikasjon.schemas.Beskjed
 import no.nav.brukernotifikasjon.schemas.Done
 import no.nav.brukernotifikasjon.schemas.Nokkel
 import no.nav.brukernotifikasjon.schemas.Oppgave
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.BESKJED_TOPIC
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.DONE_TOPIC
+import no.nav.helse.flex.reisetilskudd.brukernotifikasjon.config.OPPGAVE_TOPIC
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -56,8 +59,12 @@ class TestKafkaConfig(
     @Bean
     fun mockSchemaRegistryClient(): MockSchemaRegistryClient {
         val mockSchemaRegistryClient = MockSchemaRegistryClient()
-        mockSchemaRegistryClient.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Beskjed.`SCHEMA$`))
-        mockSchemaRegistryClient.register("aapen-brukernotifikasjon-nyBeskjed-v1" + "-value", AvroSchema(Nokkel.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$BESKJED_TOPIC-value", AvroSchema(Beskjed.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$BESKJED_TOPIC-value", AvroSchema(Nokkel.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$OPPGAVE_TOPIC-value", AvroSchema(Oppgave.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$OPPGAVE_TOPIC-value", AvroSchema(Nokkel.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$DONE_TOPIC-value", AvroSchema(Done.`SCHEMA$`))
+        mockSchemaRegistryClient.register("$DONE_TOPIC-value", AvroSchema(Nokkel.`SCHEMA$`))
         return mockSchemaRegistryClient
     }
 
@@ -90,8 +97,28 @@ class TestKafkaConfig(
     }
 
     @Bean
-    fun kafkaConsumer(consumerFactoryBeskjed: ConsumerFactory<Nokkel, Beskjed>): Consumer<Nokkel, Beskjed> {
+    fun consumerFactoryDone(properties: KafkaProperties): ConsumerFactory<Nokkel, Done> {
+        @Suppress("UNCHECKED_CAST")
+        return DefaultKafkaConsumerFactory(
+            properties.buildConsumerProperties(),
+            kafkaAvroDeserializer() as Deserializer<Nokkel>,
+            kafkaAvroDeserializer() as Deserializer<Done>
+        )
+    }
+
+    @Bean
+    fun beskjedKafkaConsumer(consumerFactoryBeskjed: ConsumerFactory<Nokkel, Beskjed>): Consumer<Nokkel, Beskjed> {
         return consumerFactoryBeskjed.createConsumer()
+    }
+
+    @Bean
+    fun oppgaveKafkaConsumer(consumerFactoryOppgave: ConsumerFactory<Nokkel, Oppgave>): Consumer<Nokkel, Oppgave> {
+        return consumerFactoryOppgave.createConsumer()
+    }
+
+    @Bean
+    fun doneoppgaveKafkaConsumer(consumerFactoryDone: ConsumerFactory<Nokkel, Done>): Consumer<Nokkel, Done> {
+        return consumerFactoryDone.createConsumer()
     }
 
     @Bean

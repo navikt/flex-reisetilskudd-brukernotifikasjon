@@ -34,6 +34,9 @@ class ReisetilskuddConsumer(
 
     @EventListener
     fun eventHandler(event: ConsumerStoppedEvent) {
+        if (event.reason == ConsumerStoppedEvent.Reason.NORMAL) {
+            return
+        }
         log.error("Consumer stoppet grunnet ${event.reason}, restarter app")
         applicationState.iAmDead()
     }

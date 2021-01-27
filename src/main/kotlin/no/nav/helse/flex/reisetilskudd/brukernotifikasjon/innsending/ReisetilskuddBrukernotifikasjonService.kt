@@ -42,7 +42,7 @@ class ReisetilskuddBrukernotifikasjonService(
         val reisetilskudd = soknadString.tilReisetilskudd()
 
         return when (reisetilskudd.status) {
-            ReisetilskuddStatus.FREMTIDIG -> Unit
+            ReisetilskuddStatus.FREMTIDIG -> Unit // Ignorerer fremtidige
             ReisetilskuddStatus.ÅPEN -> handterApen(reisetilskudd)
             ReisetilskuddStatus.SENDBAR -> handterSendbar(reisetilskudd)
             ReisetilskuddStatus.SENDT -> handterAvbruttOgSendt(reisetilskudd)
@@ -73,7 +73,7 @@ class ReisetilskuddBrukernotifikasjonService(
             .build()
 
         oppgaveKafkaProducer.send(ProducerRecord(OPPGAVE_TOPIC, nokkel, oppgave)).get()
-
+        log.info("Sender på $OPPGAVE_TOPIC")
         tilInnsendingRepository.save(
             TilInnsending(
                 reisetilskuddId = reisetilskudd.reisetilskuddId,
@@ -128,6 +128,7 @@ class ReisetilskuddBrukernotifikasjonService(
     }
 
     private fun handterAvbruttOgSendt(reisetilskudd: Reisetilskudd) {
+        // Vi finner beskjeder og oppgaver som ikke er donnet og sender done
         tilUtfyllingRepository.findTilUtfyllingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId).sendDone()
         tilInnsendingRepository.findTilInnsendingByReisetilskuddId(reisetilskuddId = reisetilskudd.reisetilskuddId).sendDone()
     }
@@ -149,6 +150,7 @@ class ReisetilskuddBrukernotifikasjonService(
                 doneKafkaProducer.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilUtfyllingRepository.save(it.copy(doneSendt = Instant.now()))
+                log.info("Sendte done på beskjed på reisetilskuddsøknad ${it.reisetilskuddId} med nøkkel ${it.nokkel}")
             }
         }
     }
@@ -170,6 +172,8 @@ class ReisetilskuddBrukernotifikasjonService(
                 doneKafkaProducer.send(ProducerRecord(DONE_TOPIC, nokkel, done)).get()
 
                 tilInnsendingRepository.save(it.copy(doneSendt = Instant.now()))
+
+                log.info("Sendte done på oppgave på reisetilskuddsøknad ${it.reisetilskuddId} med nøkkel ${it.nokkel}")
             }
         }
     }
