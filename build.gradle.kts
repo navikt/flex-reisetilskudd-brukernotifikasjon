@@ -31,7 +31,7 @@ repositories {
 }
 
 val brukernotifikasjonSchemasVersion = "1.2021.01.18-11.12-b9c8c40b98d1"
-val confluentVersion = "6.0.1"
+val confluentVersion = "6.1.1"
 val testContainersVersion = "1.15.2"
 val kluentVersion = "1.65"
 
